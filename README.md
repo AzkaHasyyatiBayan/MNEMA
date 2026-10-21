@@ -1,41 +1,38 @@
 # MNEMA — Decentralized Provenance & Evidence Vault Ledger
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Solidity-%23363636.svg?style=for-the-badge&logo=solidity&logoColor=white" alt="Solidity" />
+  <img src="https://img.shields.io/badge/Ethereum-3C3C3D?style=for-the-badge&logo=Ethereum&logoColor=white" alt="Ethereum" />
+  <img src="https://img.shields.io/badge/Hardhat-FFF100?style=for-the-badge&logo=hardhat&logoColor=black" alt="Hardhat" />
+  <img src="https://img.shields.io/badge/OpenZeppelin-4E5EE4?style=for-the-badge&logo=OpenZeppelin&logoColor=white" alt="OpenZeppelin" />
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/IPFS-65C2CB?style=for-the-badge&logo=ipfs&logoColor=white" alt="IPFS" />
+  <img src="https://img.shields.io/badge/Ethers.js-2535A0?style=for-the-badge&logo=ethereum&logoColor=white" alt="Ethers.js" />
+</p>
+
 > *"A memory no one owns alone. Remembered by the network. Proven by the record."*
 
 MNEMA adalah sistem pencatatan jejak audit (*audit trail*), notaris digital (*digital notary*), dan *evidence vault* lintas organisasi berbasis teknologi blockchain EVM (*Ethereum Virtual Machine*) dan IPFS (*InterPlanetary File System*). Sistem ini dirancang untuk menjamin keaslian, integritas, dan ketertelusuran dokumen audit tanpa mengekspos data mentah privat ke jaringan publik (*Zero-Leak Architecture*).
 
 ---
 
-## Tim Pengembang & Pembagian Peran
+## Teknologi & Framework yang Digunakan
 
-Berikut adalah susunan anggota tim dan pembagian tugas:
-
-### 1. Azka Hasyyati Bayan
-**Peran: Smart Contract & Arsitektur (Anggota 1)**
-- Aktor, aset, alur transaksi, kebutuhan trust, diagram arsitektur (Architecture_Diagram)
-- Keputusan on-chain vs off-chain, dokumen desain
-- Kontrak Solidity (struct, mapping, modifier, event, access control)
-- Slide masalah, stakeholder, dan alasan pakai blockchain
-
-### 2. Muhammad Rafli Fajar Batubara
-**Peran: Testing, Deploy & Integrasi (Anggota 2)**
-- Unit test (positif, negatif, batas, access control)
-- Debugging satu kasus gagal, deployment ke local/test network, deployment record
-- Frontend/script integrasi wallet, README reproduksi
-- Demo end-to-end langsung, Video_Demo.mp4 cadangan, slide testing & deployment
-
-### 3. Sherly Nandia Mathovani
-**Peran: Security Audit (Anggota 3)**
-- Threat model, pemeriksaan reentrancy, access control, front-running, oracle, DoS, validasi input
-- Klasifikasi temuan, perbaikan kode (commit sebelum/sesudah), unit test verifikasi
-- Tabel audit dan Security_Audit.pdf
-
-### 4. Ayu Barkilah
-**Peran: Enterprise Eval & Dokumentasi (Anggota 4)**
-- Matriks perbandingan Ethereum vs Hyperledger Fabric (identitas, permissioning, konsensus, privasi, throughput, governance, biaya)
-- Evaluasi skalabilitas, interoperabilitas, privasi, dan tata kelola (2-3 halaman), kapan pakai public/permissioned/database biasa, rekomendasi arsitektur akhir
-- Laporan_UAS_Blockchain.pdf, aspek etika/regulasi/keberlanjutan, roadmap perbaikan
-- Menggabungkan slide (maks. 10) dan merapikan repo final
+| Komponen | Teknologi | Logo & Badge | Keterangan |
+| :--- | :--- | :--- | :--- |
+| **Smart Contract** | Solidity | <img src="https://img.shields.io/badge/Solidity-363636?style=flat-square&logo=solidity&logoColor=white" alt="Solidity" /> | Bahasa pemrograman logika kontrak pintar on-chain |
+| **EVM Blockchain** | Ethereum | <img src="https://img.shields.io/badge/Ethereum-3C3C3D?style=flat-square&logo=Ethereum&logoColor=white" alt="Ethereum" /> | Lapisan konsensus konsorsium dan mesin eksekusi transaksi |
+| **Testing & Toolchain** | Hardhat | <img src="https://img.shields.io/badge/Hardhat-FFF100?style=flat-square&logo=hardhat&logoColor=black" alt="Hardhat" /> | Framework pengujian otomatis unit test (18 test cases lolos) & deployment |
+| **Security Standards** | OpenZeppelin | <img src="https://img.shields.io/badge/OpenZeppelin-4E5EE4?style=flat-square&logo=OpenZeppelin&logoColor=white" alt="OpenZeppelin" /> | Pustaka teruji: `AccessControl`, `Pausable`, dan `ReentrancyGuard` |
+| **Frontend Framework** | Next.js 14 | <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js" /> | Framework modern React dengan App Router & Server Components |
+| **UI Library** | React | <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React" /> | Antarmuka interaktif responsif berbasis komponen |
+| **Type Safety** | TypeScript | <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /> | Validasi tipe statis menyeluruh untuk keandalan runtime kode |
+| **Styling & Theme** | Tailwind CSS | <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" /> | Sistem desain Glassmorphism dengan dukungan tema Dark/Light |
+| **Off-Chain Storage** | IPFS | <img src="https://img.shields.io/badge/IPFS-65C2CB?style=flat-square&logo=ipfs&logoColor=white" alt="IPFS" /> | Penyimpanan dokumen audit terdesentralisasi berbasis Content Identifier (CIDv1) |
+| **Web3 Client** | Ethers.js | <img src="https://img.shields.io/badge/Ethers.js-2535A0?style=flat-square&logo=ethereum&logoColor=white" alt="Ethers.js" /> | Integrasi penyedia Web3 (MetaMask & Simulator Terintegrasi) |
 
 ---
 
@@ -135,3 +132,14 @@ http://localhost:3000
    - Klik **Buka Komitmen & Daftarkan Bukti** (Tahap 2) untuk mendaftarkan bukti resmi ke ledger.
 4. **System Guide (`/guide`)**:
    - Buka dokumentasi alur kerja, keputusan on-chain vs off-chain, spesifikasi keamanan kontrak, materi tanya jawab defense, dan pusat editor/generator berkas audit interaktif.
+
+---
+
+## Tim Pengembang & Pembagian Peran
+
+| No | Nama | Peran | Tanggung Jawab & Luaran Tugas |
+| :---: | :--- | :--- | :--- |
+| **1** | **Azka Hasyyati Bayan** | Smart Contract & Arsitektur (Anggota 1) | • Aktor, aset, alur transaksi, kebutuhan trust, diagram arsitektur (Architecture_Diagram)<br>• Keputusan on-chain vs off-chain, dokumen desain<br>• Kontrak Solidity (struct, mapping, modifier, event, access control)<br>• Slide masalah, stakeholder, dan alasan pakai blockchain |
+| **2** | **Muhammad Rafli Fajar Batubara** | Testing, Deploy & Integrasi (Anggota 2) | • Unit test (positif, negatif, batas, access control)<br>• Debugging satu kasus gagal, deployment ke local/test network, deployment record<br>• Frontend/script integrasi wallet, README reproduksi<br>• Demo end-to-end langsung, Video_Demo.mp4 cadangan, slide testing & deployment |
+| **3** | **Sherly Nandia Mathovani** | Security Audit (Anggota 3) | • Threat model, pemeriksaan reentrancy, access control, front-running, oracle, DoS, validasi input<br>• Klasifikasi temuan, perbaikan kode (commit sebelum/sesudah), unit test verifikasi<br>• Tabel audit dan Security_Audit.pdf |
+| **4** | **Ayu Barkilah** | Enterprise Eval & Dokumentasi (Anggota 4) | • Matriks perbandingan Ethereum vs Hyperledger Fabric (identitas, permissioning, konsensus, privasi, throughput, governance, biaya)<br>• Evaluasi skalabilitas, interoperabilitas, privasi, dan tata kelola (2-3 halaman), kapan pakai public/permissioned/database biasa, rekomendasi arsitektur akhir<br>• Laporan_UAS_Blockchain.pdf, aspek etika/regulasi/keberlanjutan, roadmap perbaikan<br>• Menggabungkan slide (maks. 10) dan merapikan repo final |
