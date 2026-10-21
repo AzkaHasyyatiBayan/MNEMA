@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js Build
+.next/
+out/
+build/
+dist/
+
+# Hardhat & Solidity
+cache/
+artifacts/
+typechain-types/
+
+# Environment & OS
+.env
+.env*.local
+.DS_Store
+*.log
+
+# Documents, Reports & Media (Di luar source code)
+docs/
+dpcs/
+*.pdf
+*.pptx
+*.docx
+*.mp4
