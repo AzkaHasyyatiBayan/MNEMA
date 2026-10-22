@@ -1,0 +1,17 @@
+◇ injected env (0) from .env
+
+
+  Security Audit - Exploit Proofs (pre-fix)
+    ✔ F-01: attacker front-runs reveal via createMemoryRecord (70ms)
+    ✔ F-03a: revoked auditor can still update status and grant access
+    ✔ F-03b: creator can reactivate a Revoked record
+    ✔ F-04: anyone can overwrite a revealed commitment
+    ✔ F-05: revokeAccess is blocked while paused
+    ✔ F-06a: admin can set minCommitDelay to 0
+    ✔ F-06b: huge maxCommitWindow makes reveal panic (overflow)
+    ✔ F-02: user without grant can still read the record
+    ✔ Reentrancy N/A: attacker contract with role registers normally
+
+
+  9 passing (3s)
+
