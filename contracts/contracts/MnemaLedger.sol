@@ -12,8 +12,10 @@ import {IMnemaLedger} from "./interfaces/IMnemaLedger.sol";
  * @notice Decentralized Audit & Provenance Ledger - Sistem Pencatatan Jejak Audit,
  *         Notaris Digital, dan Evidence Vault Lintas Organisasi.
  * @dev Mengimplementasikan Role-Based Access Control (RBAC), Commit-Reveal Anti-Front-Running,
- *      Time-Locked Access Delegation, Circuit Breaker (Pausable), dan Custom Errors
- *      untuk efisiensi gas maksimal sesuai rubrik UAS OBE.
+ *      Time-Locked Access Delegation, Circuit Breaker (Pausable), dan Custom Errors.
+ *
+ *      VERSI SETELAH AUDIT KEAMANAN (perbaikan F-01, F-03, F-04, F-05, F-06).
+ *      Versi sebelum perbaikan: tag git `v1-audit`.
  */
 contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     // =========================================================================
@@ -21,6 +23,12 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     // =========================================================================
     bytes32 public constant AUDITOR_ROLE = keccak256("AUDITOR_ROLE");
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
+
+    // =========================================================================
+    // CONSTANTS
+    // =========================================================================
+    /// @dev [F-06] Batas atas jendela commit agar tidak terjadi overflow uint64 / DoS.
+    uint64 public constant MAX_COMMIT_WINDOW_LIMIT = 365 days;
 
     // =========================================================================
     // CUSTOM ERRORS (Gas-Efficient Error Handling)
@@ -38,6 +46,24 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     error Mnema__NotRecordCreatorOrAdmin();
     error Mnema__InvalidExpiryDuration();
     error Mnema__ZeroAddressNotAllowed();
+    /// @dev [F-06] Parameter commit-reveal di luar batas aman.
+    error Mnema__InvalidCommitParameters(uint64 minDelay, uint64 maxWindow);
+    /// @dev [F-03] Perubahan status ke status yang sama.
+    error Mnema__InvalidStatusTransition(RecordStatus current, RecordStatus requested);
+    /// @dev [F-03] Record berstatus Revoked hanya boleh diubah admin.
+    error Mnema__RevokedRecordLocked();
+
+    // =========================================================================
+    // EVENTS (tambahan)
+    // =========================================================================
+    /// @dev [F-06] Jejak tata kelola perubahan parameter.
+    event CommitParametersUpdated(
+        uint64 oldMinDelay,
+        uint64 oldMaxWindow,
+        uint64 newMinDelay,
+        uint64 newMaxWindow,
+        address indexed updatedBy
+    );
 
     // =========================================================================
     // STATE VARIABLES
@@ -48,36 +74,30 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     uint64 public minCommitDelay; // Waktu tunggu minimum sebelum reveal (default: 15 detik)
     uint64 public maxCommitWindow; // Jendela waktu kedaluwarsa commit (default: 1 hari)
 
-    /// @notice Penyimpanan Record Utama
-    /// @dev recordId => MemoryRecord
     mapping(uint256 => MemoryRecord) private _records;
-
-    /// @notice Pencarian O(1) dari Hash Dokumen ke Record ID
-    /// @dev docHash => recordId
     mapping(bytes32 => uint256) private _hashToRecordId;
-
-    /// @notice Daftar Record ID yang dibuat oleh masing-masing creator
-    /// @dev creatorAddress => array of recordId
     mapping(address => uint256[]) private _creatorRecords;
-
-    /// @notice Delegasi Akses Berbatas Waktu (Time-Locked Access)
-    /// @dev recordId => (userAddress => AccessGrant)
     mapping(uint256 => mapping(address => AccessGrant)) private _accessGrants;
-
-    /// @notice Registry Komitmen Rahasia (Commit-Reveal)
-    /// @dev commitmentHash => Commitment
     mapping(bytes32 => Commitment) private _commitments;
 
     // =========================================================================
     // MODIFIERS
     // =========================================================================
+    /**
+     * @dev [F-03] Admin, atau creator yang MASIH memegang AUDITOR_ROLE.
+     *      Sebelumnya auditor yang role-nya sudah dicabut tetap lolos.
+     */
     modifier onlyCreatorOrAdmin(uint256 recordId) {
         if (recordId == 0 || recordId > _recordCounter) {
             revert Mnema__RecordIdNotFound(recordId);
         }
-        address creator = _records[recordId].creator;
-        if (msg.sender != creator && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
-            revert Mnema__NotRecordCreatorOrAdmin();
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            if (
+                msg.sender != _records[recordId].creator ||
+                !hasRole(AUDITOR_ROLE, msg.sender)
+            ) {
+                revert Mnema__NotRecordCreatorOrAdmin();
+            }
         }
         _;
     }
@@ -85,12 +105,6 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     // =========================================================================
     // CONSTRUCTOR
     // =========================================================================
-    /**
-     * @notice Inisialisasi kontrak MNEMA dengan admin awal dan konfigurasi jendela commit-reveal.
-     * @param rootAdmin Alamat Super Admin / Regulator tata kelola
-     * @param initialMinCommitDelay Delay minimum commit sebelum reveal (detik)
-     * @param initialMaxCommitWindow Batas waktu reveal sebelum commit kedaluwarsa (detik)
-     */
     constructor(
         address rootAdmin,
         uint64 initialMinCommitDelay,
@@ -102,8 +116,12 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
         _grantRole(AUDITOR_ROLE, rootAdmin);
         _grantRole(VERIFIER_ROLE, rootAdmin);
 
-        minCommitDelay = initialMinCommitDelay > 0 ? initialMinCommitDelay : 15 seconds;
-        maxCommitWindow = initialMaxCommitWindow > 0 ? initialMaxCommitWindow : 1 days;
+        uint64 minDelay = initialMinCommitDelay > 0 ? initialMinCommitDelay : 15 seconds;
+        uint64 maxWindow = initialMaxCommitWindow > 0 ? initialMaxCommitWindow : 1 days;
+        _validateCommitParameters(minDelay, maxWindow);
+
+        minCommitDelay = minDelay;
+        maxCommitWindow = maxWindow;
     }
 
     // =========================================================================
@@ -111,36 +129,47 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     // =========================================================================
 
     /**
-     * @notice Membuat record audit secara langsung (Direct Registration).
-     * @dev Memerlukan AUDITOR_ROLE dan kontrak tidak dalam kondisi pause.
-     * @param docHash Fingerprint SHA-256 dari berkas audit asli
-     * @param ipfsCID Content Identifier IPFS tempat berkas tersimpan
-     * @param title Judul atau deskripsi singkat record
-     * @param metadataURI Metadata terstruktur tambahan
-     * @return recordId ID identitas rekaman yang baru dibuat
+     * @notice Membuat record secara langsung (Direct Registration).
+     * @dev [F-01] Hanya ADMIN. Sebelumnya AUDITOR_ROLE, sehingga auditor jahat dapat
+     *      mendahului (front-run) reveal auditor lain tanpa commit. Auditor biasa
+     *      wajib memakai jalur commit-reveal.
      */
     function createMemoryRecord(
         bytes32 docHash,
         string calldata ipfsCID,
         string calldata title,
         string calldata metadataURI
-    ) external onlyRole(AUDITOR_ROLE) whenNotPaused nonReentrant returns (uint256 recordId) {
+    )
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        whenNotPaused
+        nonReentrant
+        returns (uint256 recordId)
+    {
         return _internalCreateRecord(docHash, ipfsCID, title, metadataURI, msg.sender);
     }
 
     /**
-     * @notice Tahap 1 Skema Commit-Reveal: Mendaftarkan komitmen hash rahasia sebelum reveal.
-     * @dev Menghindari penyerang melakukan front-running transaksi pencatatan bukti penting.
-     *      commitment = keccak256(abi.encodePacked(docHash, salt, msg.sender))
-     * @param commitment Hash komitmen dari bukti dan salt rahasia
+     * @notice Tahap 1 Skema Commit-Reveal.
+     * @dev commitment = keccak256(abi.encodePacked(docHash, salt, msg.sender))
+     *      [F-04] Commitment yang sudah di-reveal tidak boleh ditimpa.
+     *      [F-09] Hanya AUDITOR_ROLE agar tidak bisa di-spam pihak luar.
      */
-    function commitMemory(bytes32 commitment) external whenNotPaused {
+    function commitMemory(bytes32 commitment)
+        external
+        onlyRole(AUDITOR_ROLE)
+        whenNotPaused
+    {
         if (commitment == bytes32(0)) revert Mnema__ZeroHashNotAllowed();
 
         Commitment storage comm = _commitments[commitment];
-        if (comm.commitTimestamp != 0 && !comm.isRevealed) {
-            // Re-commit hanya diizinkan jika sudah expired atau baru
-            if (block.timestamp <= comm.commitTimestamp + maxCommitWindow) {
+        if (comm.commitTimestamp != 0) {
+            // Ditolak jika sudah di-reveal, atau masih dalam jendela aktif.
+            // Re-commit hanya boleh untuk commit yang kedaluwarsa dan belum di-reveal.
+            if (
+                comm.isRevealed ||
+                block.timestamp <= uint256(comm.commitTimestamp) + maxCommitWindow
+            ) {
                 revert Mnema__InvalidCommitment();
             }
         }
@@ -161,14 +190,7 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Tahap 2 Skema Commit-Reveal: Mengungkap berkas asli dan memverifikasi komitmen.
-     * @dev Menghitung ulang hash komitmen dan memastikan jendela waktu valid.
-     * @param docHash Hash SHA-256 dokumen asli
-     * @param salt Kunci acak (salt) yang digunakan saat commit
-     * @param ipfsCID Content Identifier IPFS berkas bukti
-     * @param title Judul record bukti audit
-     * @param metadataURI URI metadata tambahan
-     * @return recordId ID unik record yang berhasil diverifikasi dan didaftarkan
+     * @notice Tahap 2 Skema Commit-Reveal.
      */
     function revealMemory(
         bytes32 docHash,
@@ -209,9 +231,6 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
         return recordId;
     }
 
-    /**
-     * @dev Logika internal pendaftaran record guna memastikan optimasi DRY dan gas.
-     */
     function _internalCreateRecord(
         bytes32 docHash,
         string calldata ipfsCID,
@@ -260,12 +279,6 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     // VERIFIKASI & AUDIT
     // =========================================================================
 
-    /**
-     * @notice Memverifikasi integritas dokumen dan memancarkan event verifikasi on-chain.
-     * @param docHash Fingerprint SHA-256 yang ingin dicocokkan dengan ledger
-     * @return isValid Boolean keabsahan dokumen
-     * @return record Struct data lengkap rekaman jika ditemukan
-     */
     function verifyRecord(bytes32 docHash)
         external
         whenNotPaused
@@ -292,16 +305,9 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     }
 
     // =========================================================================
-    // TIME-LOCKED ACCESS DELEGATION (KONTROL AKSES BERKEDALUWARSA)
+    // TIME-LOCKED ACCESS DELEGATION
     // =========================================================================
 
-    /**
-     * @notice Memberikan izin akses berbatas waktu (*Time-Locked Access*) kepada pihak ketiga.
-     * @dev Hanya creator dokumen atau Admin yang memiliki otorisasi pemberian akses.
-     * @param user Alamat penerima izin inspeksi
-     * @param recordId ID record yang ingin didelegasikan
-     * @param durationInSeconds Durasi izin berlaku dari sekarang (detik)
-     */
     function grantAccess(
         address user,
         uint256 recordId,
@@ -322,14 +328,13 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Mencabut izin akses secara manual sebelum waktu kedaluwarsa habis.
-     * @param user Alamat yang izinnya akan dicabut
-     * @param recordId ID record yang bersangkutan
+     * @notice Mencabut izin akses.
+     * @dev [F-05] Tanpa `whenNotPaused`: pencabutan akses harus tetap bisa dilakukan
+     *      saat insiden (kontrak sedang di-pause).
      */
     function revokeAccess(address user, uint256 recordId)
         external
         onlyCreatorOrAdmin(recordId)
-        whenNotPaused
     {
         if (user == address(0)) revert Mnema__ZeroAddressNotAllowed();
 
@@ -337,13 +342,6 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
         emit AccessRevoked(recordId, user, msg.sender);
     }
 
-    /**
-     * @notice Mengecek apakah pengguna memiliki hak akses aktif terhadap record tertentu.
-     * @param user Alamat yang diperiksa
-     * @param recordId ID record yang bersangkutan
-     * @return hasAccess Boolean apakah akses masih aktif dan belum kedaluwarsa
-     * @return expiryTimestamp Waktu batas kadaluwarsa akses
-     */
     function checkAccess(address user, uint256 recordId)
         external
         view
@@ -370,10 +368,10 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     // =========================================================================
 
     /**
-     * @notice Mengubah status record (Active, Superseded, Deprecated, Revoked).
-     * @param recordId ID record yang statusnya akan diubah
-     * @param newStatus Status baru dari enum RecordStatus
-     * @param reason Alasan audit perombakan status
+     * @notice Mengubah status record.
+     * @dev [F-03] (1) status baru harus berbeda, (2) record Revoked hanya bisa
+     *      diubah admin, (3) pemanggil harus admin atau creator beraudit-role aktif
+     *      (lihat modifier).
      */
     function updateRecordStatus(
         uint256 recordId,
@@ -384,6 +382,17 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
 
         MemoryRecord storage record = _records[recordId];
         RecordStatus oldStatus = record.status;
+
+        if (newStatus == oldStatus) {
+            revert Mnema__InvalidStatusTransition(oldStatus, newStatus);
+        }
+        if (
+            oldStatus == RecordStatus.Revoked &&
+            !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)
+        ) {
+            revert Mnema__RevokedRecordLocked();
+        }
+
         record.status = newStatus;
 
         emit RecordStatusUpdated(
@@ -399,30 +408,47 @@ contract MnemaLedger is IMnemaLedger, AccessControl, Pausable, ReentrancyGuard {
     // ADMIN CIRCUIT BREAKER & PARAMETERS
     // =========================================================================
 
-    /**
-     * @notice Menghentikan sementara operasi kontrak saat insiden darurat.
-     */
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
 
-    /**
-     * @notice Melanjutkan kembali operasi kontrak pasca-insiden.
-     */
     function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
     /**
      * @notice Mengubah parameter waktu tunggu commit-reveal.
+     * @dev [F-06] Delay minimal 1 detik, window maksimal 365 hari, delay < window,
+     *      dan perubahan dicatat lewat event.
      */
     function setCommitParameters(
         uint64 newMinCommitDelay,
         uint64 newMaxCommitWindow
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (newMinCommitDelay >= newMaxCommitWindow) revert Mnema__InvalidExpiryDuration();
+        _validateCommitParameters(newMinCommitDelay, newMaxCommitWindow);
+
+        uint64 oldMin = minCommitDelay;
+        uint64 oldMax = maxCommitWindow;
         minCommitDelay = newMinCommitDelay;
         maxCommitWindow = newMaxCommitWindow;
+
+        emit CommitParametersUpdated(
+            oldMin,
+            oldMax,
+            newMinCommitDelay,
+            newMaxCommitWindow,
+            msg.sender
+        );
+    }
+
+    function _validateCommitParameters(uint64 minDelay, uint64 maxWindow) internal pure {
+        if (
+            minDelay == 0 ||
+            minDelay >= maxWindow ||
+            maxWindow > MAX_COMMIT_WINDOW_LIMIT
+        ) {
+            revert Mnema__InvalidCommitParameters(minDelay, maxWindow);
+        }
     }
 
     // =========================================================================
