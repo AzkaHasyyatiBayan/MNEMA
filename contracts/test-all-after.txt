@@ -1,0 +1,50 @@
+◇ injected env (0) from .env
+
+
+  Security Audit - Fix Verification (post-fix)
+    ✔ F-01 fixed: auditor cannot bypass commit-reveal via createMemoryRecord (66ms)
+    ✔ F-01 regression: admin can still use direct registration
+    ✔ F-03a fixed: revoked auditor cannot update status or grant access (45ms)
+    ✔ F-03b fixed: only admin can change a Revoked record
+    ✔ F-03c fixed: setting the same status is rejected
+    ✔ F-04 fixed: revealed commitment cannot be overwritten
+    ✔ F-04 regression: expired unrevealed commitment can be re-committed
+    ✔ F-05 fixed: revokeAccess works while paused (106ms)
+    ✔ F-06a fixed: minCommitDelay of 0 is rejected
+    ✔ F-06b fixed: huge maxCommitWindow is rejected (no overflow)
+    ✔ F-06c fixed: valid update succeeds and emits CommitParametersUpdated
+    ✔ F-06d fixed: only admin can change parameters
+    ✔ F-02 accepted risk: on-chain data remains publicly readable
+    ✔ Reentrancy N/A: external contract is rejected without admin role (59ms)
+
+  MNEMA Decentralized Ledger - Smart Contract Test Suite
+    1. Deployment & Access Control Initialization
+      ✔ Should correctly set admin roles and parameters
+      ✔ Should reject deployment with zero address admin (49ms)
+    2. Direct Record Creation & Verification
+      ✔ Positive: Admin can create a new record and emit MemoryRecordCreated (121ms)
+      ✔ Positive: Auditor can register a record via commit-reveal
+      ✔ Negative: Non-auditor cannot create record
+      ✔ Negative: Auditor cannot use direct registration (admin only, audit fix F-01)
+      ✔ Negative: Cannot register with zero hash
+      ✔ Negative: Cannot register duplicate document hash
+      ✔ Positive: Verification returns true and emits RecordVerified event (47ms)
+      ✔ Negative: Verification returns false for unregistered hash
+    3. Commit-Reveal Anti-Front-Running Scheme
+      ✔ Positive: Full commit-reveal flow succeeds after delay (76ms)
+      ✔ Negative: Reveal too early reverts with Mnema__CommitmentTooEarly
+      ✔ Negative: Reveal after expiration reverts with Mnema__CommitmentExpired
+      ✔ Negative: Replay attack on already revealed commitment reverts
+    4. Time-Locked Access Delegation
+      ✔ Positive: Creator can grant time-locked access and it expires automatically
+      ✔ Positive: Creator can revoke access manually before expiry
+      ✔ Negative: Non-creator cannot grant access
+    5. Lifecycle Status & Circuit Breaker
+      ✔ Positive: Creator can update record status to Revoked
+      ✔ Positive: Admin can pause and unpause contract
+    6. Access Control via External Contract
+      ✔ Should reject calls from an external contract without role
+
+
+  34 passing (6s)
+
