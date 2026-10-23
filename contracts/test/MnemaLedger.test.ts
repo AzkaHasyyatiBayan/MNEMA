@@ -22,6 +22,27 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
   const MIN_COMMIT_DELAY = 15; // 15 detik
   const MAX_COMMIT_WINDOW = 86400; // 1 hari (86400 detik)
 
+  /**
+   * Setelah perbaikan audit F-01, createMemoryRecord hanya untuk admin.
+   * Auditor mendaftarkan record lewat jalur commit-reveal. Helper ini
+   * membuat record dengan creator = signer melalui jalur tersebut.
+   */
+  async function createViaCommitReveal(
+    signer: SignerWithAddress,
+    docHash: string,
+    cid: string,
+    title: string,
+    uri: string
+  ) {
+    const salt = ethers.keccak256(ethers.solidityPacked(["string", "bytes32"], ["SALT_", docHash]));
+    const commitment = ethers.keccak256(
+      ethers.solidityPacked(["bytes32", "bytes32", "address"], [docHash, salt, signer.address])
+    );
+    await mnema.connect(signer).commitMemory(commitment);
+    await time.increase(MIN_COMMIT_DELAY + 5);
+    await mnema.connect(signer).revealMemory(docHash, salt, cid, title, uri);
+  }
+
   beforeEach(async function () {
     [admin, auditor, verifier, unauthorizedUser, externalClient] = await ethers.getSigners();
 
@@ -70,9 +91,9 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
   // 2. DIRECT REGISTRATION & RECORD VERIFICATION (PROJECT 1 & 2)
   // =========================================================================
   describe("2. Direct Record Creation & Verification", function () {
-    it("Positive: Auditor can create a new record and emit MemoryRecordCreated", async function () {
+    it("Positive: Admin can create a new record and emit MemoryRecordCreated", async function () {
       await expect(
-        mnema.connect(auditor).createMemoryRecord(
+        mnema.connect(admin).createMemoryRecord(
           SAMPLE_DOC_HASH,
           SAMPLE_CID,
           SAMPLE_TITLE,
@@ -80,7 +101,7 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
         )
       )
         .to.emit(mnema, "MemoryRecordCreated")
-        .withArgs(1, SAMPLE_DOC_HASH, auditor.address, SAMPLE_CID, SAMPLE_TITLE, (val: any) => typeof val === "bigint");
+        .withArgs(1, SAMPLE_DOC_HASH, admin.address, SAMPLE_CID, SAMPLE_TITLE, (val: any) => typeof val === "bigint");
 
       expect(await mnema.totalRecords()).to.equal(1);
       expect(await mnema.isHashRegistered(SAMPLE_DOC_HASH)).to.be.true;
@@ -88,13 +109,21 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
       const record = await mnema.getRecordById(1);
       expect(record.recordId).to.equal(1);
       expect(record.docHash).to.equal(SAMPLE_DOC_HASH);
-      expect(record.creator).to.equal(auditor.address);
+      expect(record.creator).to.equal(admin.address);
       expect(record.title).to.equal(SAMPLE_TITLE);
       expect(record.status).to.equal(0); // RecordStatus.Active
     });
 
+    it("Positive: Auditor can register a record via commit-reveal", async function () {
+      await createViaCommitReveal(auditor, SAMPLE_DOC_HASH, SAMPLE_CID, SAMPLE_TITLE, SAMPLE_METADATA_URI);
+
+      expect(await mnema.totalRecords()).to.equal(1);
+      const record = await mnema.getRecordById(1);
+      expect(record.creator).to.equal(auditor.address);
+      expect(record.status).to.equal(0);
+    });
+
     it("Negative: Non-auditor cannot create record", async function () {
-      const AUDITOR_ROLE = await mnema.AUDITOR_ROLE();
       await expect(
         mnema.connect(unauthorizedUser).createMemoryRecord(
           SAMPLE_DOC_HASH,
@@ -105,9 +134,20 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
       ).to.be.revertedWithCustomError(mnema, "AccessControlUnauthorizedAccount");
     });
 
-    it("Negative: Cannot register with zero hash", async function () {
+    it("Negative: Auditor cannot use direct registration (admin only, audit fix F-01)", async function () {
       await expect(
         mnema.connect(auditor).createMemoryRecord(
+          SAMPLE_DOC_HASH,
+          SAMPLE_CID,
+          SAMPLE_TITLE,
+          SAMPLE_METADATA_URI
+        )
+      ).to.be.revertedWithCustomError(mnema, "AccessControlUnauthorizedAccount");
+    });
+
+    it("Negative: Cannot register with zero hash", async function () {
+      await expect(
+        mnema.connect(admin).createMemoryRecord(
           ethers.ZeroHash,
           SAMPLE_CID,
           SAMPLE_TITLE,
@@ -117,7 +157,7 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
     });
 
     it("Negative: Cannot register duplicate document hash", async function () {
-      await mnema.connect(auditor).createMemoryRecord(
+      await mnema.connect(admin).createMemoryRecord(
         SAMPLE_DOC_HASH,
         SAMPLE_CID,
         SAMPLE_TITLE,
@@ -125,7 +165,7 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
       );
 
       await expect(
-        mnema.connect(auditor).createMemoryRecord(
+        mnema.connect(admin).createMemoryRecord(
           SAMPLE_DOC_HASH,
           "another_cid",
           "Duplicate Title",
@@ -136,7 +176,7 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
     });
 
     it("Positive: Verification returns true and emits RecordVerified event", async function () {
-      await mnema.connect(auditor).createMemoryRecord(
+      await mnema.connect(admin).createMemoryRecord(
         SAMPLE_DOC_HASH,
         SAMPLE_CID,
         SAMPLE_TITLE,
@@ -282,7 +322,9 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
   // =========================================================================
   describe("4. Time-Locked Access Delegation", function () {
     beforeEach(async function () {
-      await mnema.connect(auditor).createMemoryRecord(
+      // Record milik auditor, dibuat lewat commit-reveal (audit fix F-01)
+      await createViaCommitReveal(
+        auditor,
         SAMPLE_DOC_HASH,
         SAMPLE_CID,
         SAMPLE_TITLE,
@@ -333,7 +375,9 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
   // =========================================================================
   describe("5. Lifecycle Status & Circuit Breaker", function () {
     beforeEach(async function () {
-      await mnema.connect(auditor).createMemoryRecord(
+      // Record milik auditor, dibuat lewat commit-reveal (audit fix F-01)
+      await createViaCommitReveal(
+        auditor,
         SAMPLE_DOC_HASH,
         SAMPLE_CID,
         SAMPLE_TITLE,
@@ -361,9 +405,9 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
       await mnema.connect(admin).pause();
       expect(await mnema.paused()).to.be.true;
 
-      // Pendaftaran record ditolak saat paused
+      // Pendaftaran record ditolak saat paused (admin lolos role check, lalu terkena pause)
       await expect(
-        mnema.connect(auditor).createMemoryRecord(
+        mnema.connect(admin).createMemoryRecord(
           SAMPLE_DOC_HASH_2,
           SAMPLE_CID,
           "Paused Attempt",
@@ -377,7 +421,7 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
 
       // Pendaftaran berhasil pasca-unpause
       await expect(
-        mnema.connect(auditor).createMemoryRecord(
+        mnema.connect(admin).createMemoryRecord(
           SAMPLE_DOC_HASH_2,
           SAMPLE_CID,
           "Success Resume",
@@ -388,11 +432,12 @@ describe("MNEMA Decentralized Ledger - Smart Contract Test Suite", function () {
   });
 
   // =========================================================================
-  // 6. SECURITY AUDIT TESTS (PROJECT 3)
+  // 6. ACCESS CONTROL VIA EXTERNAL CONTRACT
   // =========================================================================
-  describe("6. Security Audit Verification & Reentrancy Resistance", function () {
-    it("Should reject reentrancy attempts via external contracts without role", async function () {
-      // Kontrak penyerang mencoba memanggil createMemoryRecord
+  describe("6. Access Control via External Contract", function () {
+    it("Should reject calls from an external contract without role", async function () {
+      // Catatan: ini menguji access control, bukan reentrancy.
+      // Kontrak tidak mengirim ETH / memanggil kontrak eksternal, jadi reentrancy tidak relevan.
       await expect(
         attackerContract.attackCreate(
           SAMPLE_DOC_HASH_2,
