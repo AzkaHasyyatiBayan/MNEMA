@@ -1,0 +1,22 @@
+◇ injected env (0) from .env
+
+
+  Security Audit - Fix Verification (post-fix)
+    ✔ F-01 fixed: auditor cannot bypass commit-reveal via createMemoryRecord (100ms)
+    ✔ F-01 regression: admin can still use direct registration
+    ✔ F-03a fixed: revoked auditor cannot update status or grant access (42ms)
+    ✔ F-03b fixed: only admin can change a Revoked record (45ms)
+    ✔ F-03c fixed: setting the same status is rejected (40ms)
+    ✔ F-04 fixed: revealed commitment cannot be overwritten
+    ✔ F-04 regression: expired unrevealed commitment can be re-committed
+    ✔ F-05 fixed: revokeAccess works while paused (86ms)
+    ✔ F-06a fixed: minCommitDelay of 0 is rejected
+    ✔ F-06b fixed: huge maxCommitWindow is rejected (no overflow)
+    ✔ F-06c fixed: valid update succeeds and emits CommitParametersUpdated
+    ✔ F-06d fixed: only admin can change parameters
+    ✔ F-02 accepted risk: on-chain data remains publicly readable
+    ✔ Reentrancy N/A: external contract is rejected without admin role (41ms)
+
+
+  14 passing (4s)
+
