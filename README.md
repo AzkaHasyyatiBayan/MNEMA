@@ -74,27 +74,45 @@ MNEMA adalah sistem pencatatan jejak audit (*audit trail*), notaris digital (*di
 
 ---
 
-### Langkah 1: Pengujian & Kompilasi Smart Contract
+### Langkah 1: Pengujian, Debugging & Kompilasi Smart Contract
 Masuk ke direktori `contracts/`:
 ```bash
 cd contracts
 npm install
 ```
 
-Jalankan pengujian unit otomatis (*18 test cases*):
+Kompilasi kontrak pintar Solidity:
+```bash
+npx hardhat compile
+```
+
+Jalankan pengujian unit otomatis (*34 test cases lolos: Unit Test + Security Audit Verification*):
 ```bash
 npx hardhat test
 ```
+*Hasil log pengujian otomatis tercatat di `contracts/test/test-results.txt` dan `contracts/test-all-after.txt`.*
 
-Jalankan node lokal Hardhat (opsional jika ingin node lokal aktif):
+Jalankan pengujian audit keamanan secara spesifik:
 ```bash
-npx hardhat node
+npx hardhat test test/MnemaLedger.audit.test.ts
 ```
 
-Lakukan deployment kontrak ke node lokal:
+Jalankan simulasi & debugging kasus kegagalan (*Premature Reveal & Unauthorized Mutation*):
+```bash
+npx hardhat run scripts/debug-case.ts
+```
+*Dokumentasi lengkap bukti proses compile & debugging tersedia di [contracts/DEBUGGING_EVIDENCE.md](contracts/DEBUGGING_EVIDENCE.md).*
+
+Jalankan verifikasi integrasi klien & perubahan state on-chain:
+```bash
+npx hardhat run scripts/verify-integration.ts
+```
+
+Lakukan deployment kontrak ke node lokal & seed data genesis:
 ```bash
 npx hardhat run scripts/deploy.ts --network localhost
 ```
+*Catatan deployment resmi lengkap tersedia di [Deployment_Record.md](Deployment_Record.md).*
 
 ---
 

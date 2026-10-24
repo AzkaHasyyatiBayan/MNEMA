@@ -1,0 +1,41 @@
+﻿
+
+  MNEMA Decentralized Ledger - Unit Test Suite (Project 2: Testing & Deployment)
+    1. Skenario Positif (Positive Test Cases)
+      ΓêÜ Positif 1.1: Inisialisasi kontrak sukses dengan role admin & parameter commit-reveal
+      ΓêÜ Positif 1.2: Auditor dapat mencatat record baru secara langsung & memancarkan MemoryRecordCreated
+      ΓêÜ Positif 1.3: Verifikasi record terdaftar mengembalikan status valid = true & emit RecordVerified
+      ΓêÜ Positif 1.4: Skema Commit-Reveal lengkap berjalan sukses setelah melewati minCommitDelay
+      ΓêÜ Positif 1.5: Creator dapat memberikan delegasi akses berbatas waktu (Time-Locked Access)
+      ΓêÜ Positif 1.6: Creator dapat mencabut izin akses secara manual sebelum waktu habis
+      ΓêÜ Positif 1.7: Creator dapat memperbarui status record menjadi Revoked / Superseded
+      ΓêÜ Positif 1.8: Query daftar record berdasarkan creator mengembalikan seluruh record yang dibuat
+    2. Skenario Negatif (Negative Test Cases)
+      ΓêÜ Negatif 2.1: Menolak pendaftaran dengan hash dokumen duplikat (Mnema__RecordAlreadyExists)
+      ΓêÜ Negatif 2.2: Verifikasi dokumen yang tidak terdaftar mengembalikan false
+      ΓêÜ Negatif 2.3: Replay attack ditolak saat mencoba me-reveal commitment yang sudah dibuka
+      ΓêÜ Negatif 2.4: Menolak reveal dengan salt atau hash yang tidak pernah di-commit (Mnema__CommitmentNotFound)
+      ΓêÜ Negatif 2.5: Menolak query getRecordByHash untuk hash yang belum terdaftar
+    3. Skenario Batas (Boundary / Edge Cases)
+      ΓêÜ Batas 3.1: Menolak deploy kontrak jika rootAdmin adalah zero address (0x0)
+      ΓêÜ Batas 3.2: Menolak createMemoryRecord dengan zero hash (bytes32(0))
+      ΓêÜ Batas 3.3: Menolak commitMemory dengan zero commitment (bytes32(0))
+      ΓêÜ Batas 3.4: Menolak pendaftaran dengan string kosong (IPFS CID atau Title kosong)
+      ΓêÜ Batas 3.5: Menolak reveal jika waktu tunggu belum mencapai minCommitDelay (CommitmentTooEarly)
+      ΓêÜ Batas 3.6: Menolak reveal jika telah melewati maxCommitWindow (CommitmentExpired)
+      ΓêÜ Batas 3.7: Delegasi akses otomatis kedaluwarsa tepat setelah durasi habis
+      ΓêÜ Batas 3.8: Menolak delegasi akses dengan durasi 0 atau lebih dari 365 hari
+      ΓêÜ Batas 3.9: Menolak query getRecordById dengan ID di luar rentang (ID = 0 atau ID > totalRecords)
+      ΓêÜ Batas 3.10: Menolak setCommitParameters jika minDelay >= maxWindow
+    4. Skenario Kontrol Akses (Access Control & Security)
+      ΓêÜ Kontrol Akses 4.1: Pengguna tanpa AUDITOR_ROLE tidak dapat membuat record
+      ΓêÜ Kontrol Akses 4.2: Pengguna tanpa AUDITOR_ROLE tidak dapat me-reveal komitmen
+      ΓêÜ Kontrol Akses 4.3: Pengguna bukan creator atau admin tidak dapat mendelegasikan akses
+      ΓêÜ Kontrol Akses 4.4: Pengguna bukan creator atau admin tidak dapat mencabut akses atau ubah status
+      ΓêÜ Kontrol Akses 4.5: Non-admin tidak dapat memanggil pause, unpause, atau setCommitParameters
+      ΓêÜ Kontrol Akses 4.6: Circuit Breaker - Saat paused, seluruh fungsi transaksional ditolak (EnforcedPause)
+      ΓêÜ Kontrol Akses 4.7: Kontrak eksternal tanpa otorisasi ditolak saat mencoba reentrancy attack
+
+
+  30 passing (2s)
+

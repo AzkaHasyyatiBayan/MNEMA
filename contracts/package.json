@@ -4,7 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:audit": "hardhat test test/MnemaLedger.audit.test.ts",
+    "deploy": "hardhat run scripts/deploy.ts",
+    "debug-case": "hardhat run scripts/debug-case.ts",
+    "verify-integration": "hardhat run scripts/verify-integration.ts"
   },
   "keywords": [],
   "author": "",
