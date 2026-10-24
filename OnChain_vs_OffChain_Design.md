@@ -1,9 +1,10 @@
 # DOKUMEN DESAIN SISTEM: ON-CHAIN VS OFF-CHAIN & DATA MODEL
 ## MNEMA: Decentralized Audit & Provenance Ledger
-**Mata Kuliah:** Blockchain (KP70067008) — Semester 7 TA 2026/2027  
-**Fakultas Teknik, Universitas Siliwangi**  
-**Role:** Lead Blockchain Architect & Smart Contract Engineer  
-
+**Tugas:** Bagian A. PROJECT 1 -  DESAIN SOLUSI, SMART CONTRACT, DAN ARSITEKTUR DApp
+**Penanggung Jawab:** Azka Hasyyati Bayan (Anggota 1 - Smart Contract & Arsitektur)  
+**Mata Kuliah:** Blockchain (KP70067008) - Semester 7 (Ganjil)  
+**Program Studi:** S-1 Informatika, Fakultas Teknik, Universitas Siliwangi  
+**Dosen Pengampu:** Dr. Ir. Nur Widiyasono, M.Kom.  
 ---
 
 ## 1. Analisis Kebutuhan Penyimpanan & Trade-Off Arsitektural
