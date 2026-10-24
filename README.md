@@ -64,6 +64,17 @@ MNEMA adalah sistem pencatatan jejak audit (*audit trail*), notaris digital (*di
 
 ---
 
+## Arsitektur Data: On-Chain vs Off-Chain
+
+MNEMA menerapkan pendekatan arsitektur hibrida (Hybrid On-Chain/Off-Chain Architecture) untuk mengoptimalkan efisiensi gas dan batas blok EVM:
+
+- **On-Chain (Ethereum / EVM):** Menyimpan bukti kriptografis berupa sidik jari berkas 32-byte (`docHash` SHA-256), metadata kepemilikan inti (`creator`, `timestamp`, `status`), komitmen anti-front running, serta aturan kontrol akses terdesentralisasi (Time-Locked Access Delegation).
+- **Off-Chain (IPFS / Pinata):** Menyimpan muatan berkas fisik dokumen asli (PDF, CSV, JSON, citra) berukuran besar menggunakan Content Identifier (CIDv1) serta catatan audit lanjutan tanpa membebani penyimpanan kontrak pintar.
+
+Analisis mendalam mengenai pertimbangan gas limit, trade-off arsitektur, dan model data struct dapat dibaca pada [OnChain_vs_OffChain_Design.md](OnChain_vs_OffChain_Design.md).
+
+---
+
 ## Panduan Menjalankan Sistem (Reproduksi Lokal)
 
 ### Prasyarat
@@ -157,7 +168,7 @@ http://localhost:3000
 
 | No | Nama | Peran | Tanggung Jawab & Luaran Tugas |
 | :---: | :--- | :--- | :--- |
-| **1** | **Azka Hasyyati Bayan** | Smart Contract & Arsitektur (Anggota 1) | • Aktor, aset, alur transaksi, kebutuhan trust, diagram arsitektur (Architecture_Diagram)<br>• Keputusan on-chain vs off-chain, dokumen desain<br>• Kontrak Solidity (struct, mapping, modifier, event, access control)<br>• Slide masalah, stakeholder, dan alasan pakai blockchain |
+| **1** | **Azka Hasyyati Bayan** | Smart Contract & Arsitektur (Anggota 1) | • Aktor, aset, alur transaksi, kebutuhan trust, diagram arsitektur (Architecture_Diagram)<br>• Keputusan on-chain vs off-chain, [dokumen desain](OnChain_vs_OffChain_Design.md)<br>• Kontrak Solidity (struct, mapping, modifier, event, access control)<br>• Slide masalah, stakeholder, dan alasan pakai blockchain |
 | **2** | **Muhammad Rafli Fajar Batubara** | Testing, Deploy & Integrasi (Anggota 2) | • Unit test (positif, negatif, batas, access control)<br>• Debugging satu kasus gagal, deployment ke local/test network, deployment record<br>• Frontend/script integrasi wallet, README reproduksi<br>• Demo end-to-end langsung, Video_Demo.mp4 cadangan, slide testing & deployment |
 | **3** | **Sherly Nandia Mathovani** | Security Audit (Anggota 3) | • Threat model, pemeriksaan reentrancy, access control, front-running, oracle, DoS, validasi input<br>• Klasifikasi temuan, perbaikan kode (commit sebelum/sesudah), unit test verifikasi<br>• Tabel audit dan Security_Audit.pdf |
 | **4** | **Ayu Barkilah** | Enterprise Eval & Dokumentasi (Anggota 4) | • Matriks perbandingan Ethereum vs Hyperledger Fabric (identitas, permissioning, konsensus, privasi, throughput, governance, biaya)<br>• Evaluasi skalabilitas, interoperabilitas, privasi, dan tata kelola (2-3 halaman), kapan pakai public/permissioned/database biasa, rekomendasi arsitektur akhir<br>• Laporan_UAS_Blockchain.pdf, aspek etika/regulasi/keberlanjutan, roadmap perbaikan<br>• Menggabungkan slide (maks. 10) dan merapikan repo final |
